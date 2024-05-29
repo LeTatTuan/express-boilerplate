@@ -1,4 +1,3 @@
-import { required } from "joi";
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
@@ -68,8 +67,5 @@ const productSchema = new mongoose.Schema({
 
 }, { timestamps: true, toJSON: { virtuals: true, getters: true }, toObject: { virtuals: true, getters: true } }
 );
-// productSchema.virtual('id').get(function () {
-//     return this._id.toString();
-// });
 
 export default mongoose.model('Product', productSchema);

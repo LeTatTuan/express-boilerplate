@@ -5,7 +5,7 @@ import { ROLES } from "@/enum/role.enum.js";
 import Token from "@/models/Token.js";
 import jwtService from "./jwt.service.js";
 
-
+// Role.insertMany([{ name: 'user' }, { name: 'admin' }, { name: 'moderator' }]);
 class authService {
     static checkExistingUser = async (username, email) => {
         const usernameAlreadyExists = await User.findOne({ username });
@@ -93,12 +93,12 @@ class authService {
                     }
                 });
             }
-          
+
             await Token.findByIdAndUpdate(userToken._id, {
                 accessTokens: [...oldTokens, { accessToken, signedAt: Date.now().toString() }],
             });
             refreshToken = userToken.refreshToken;
-            return {user, accessToken, refreshToken};
+            return { user, accessToken, refreshToken };
         } else {
             refreshToken = jwtService.createToken(user, false);
 
@@ -109,10 +109,10 @@ class authService {
                 ip,
                 user: user._id
             };
-    
+
             await Token.create(userTokenNew);
         }
-        return {user, accessToken, refreshToken};
+        return { user, accessToken, refreshToken };
     }
 
     static logout = async (req, res) => {
