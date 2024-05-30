@@ -32,4 +32,7 @@ router.get('/payments/subscriptions/active', asyncHandler(paymentController.getA
 router.get('/payments/customers/new', asyncHandler(paymentController.getNewCustomers));
 router.get('/payments/users/active', asyncHandler(paymentController.getActiveUsers));
 router.get('/payments/revenues', asyncHandler(paymentController.getRevenues));
+
+// transactions routes
+router.get('/transactions', asyncHandler(paymentController.getRecentTransactions));
 export default router;

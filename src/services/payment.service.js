@@ -1,20 +1,23 @@
 import Device from "@/models/Device";
-import Payment from "@/models/Payment";
 import Presence from "@/models/Presence";
-import Project from "@/models/Project";
 import Transaction from "@/models/Transaction";
 
 
 class paymentService {
-    static getActiveTrials = async (prefix_bundle_id = 'com.lutech.ios.themepack') => {
-        const thirtyDaysAgo = new Date(new Date().getTime() - (30 * 24 * 60 * 60 * 1000)).getTime();
+    static getActiveTrials = async (prefixBundleId, days) => {
+        const daysAgo = new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000)).getTime();
 
         const result = await Transaction.aggregate([
             {
                 $match: {
-                    bundle_id: {
-                        $regex: prefix_bundle_id
-                    }
+                    $or: [
+                        {
+                            bundle_id: { $regex: prefixBundleId }
+                        },
+                        {
+                            store_id: { $regex: prefixBundleId }
+                        }
+                    ]
                 }
             },
             {
@@ -26,7 +29,7 @@ class paymentService {
                             cond: {
                                 $and: [
                                     { $eq: ['$$transaction.offerDiscountType', 'FREE_TRIAL'] },
-                                    { $gte: ['$$transaction.originalPurchaseDate', thirtyDaysAgo] }
+                                    { $gte: ['$$transaction.purchaseDate', daysAgo] }
                                 ]
                             }
                         }
@@ -51,15 +54,20 @@ class paymentService {
             active_trials_formatted: totalActiveTrials.toLocaleString('en-US')
         };
     }
-    static getActiveSubs = async (prefix_bundle_id = 'com.lutech.ios.themepack') => {
-        const thirtyDaysAgo = new Date(new Date().getTime() - (30 * 24 * 60 * 60 * 1000)).getTime();
+    static getActiveSubs = async (prefixBundleId, days) => {
+        const daysAgo = new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000)).getTime();
 
         const result = await Transaction.aggregate([
             {
                 $match: {
-                    bundle_id: {
-                        $regex: prefix_bundle_id
-                    }
+                    $or: [
+                        {
+                            bundle_id: { $regex: prefixBundleId }
+                        },
+                        {
+                            store_id: { $regex: prefixBundleId }
+                        }
+                    ]
                 }
             },
             {
@@ -71,7 +79,7 @@ class paymentService {
                             cond: {
                                 $and: [
                                     { $ne: ['$$transaction.offerDiscountType', 'FREE_TRIAL'] },
-                                    { $gte: ['$$transaction.originalPurchaseDate', thirtyDaysAgo] }
+                                    { $gte: ['$$transaction.purchaseDate', daysAgo] }
                                 ]
                             }
                         }
@@ -98,15 +106,20 @@ class paymentService {
         };
     }
 
-    static getRevenues = async (prefix_bundle_id = 'com.lutech.ios.themepack') => {
-        const thirtyDaysAgo = new Date(new Date().getTime() - (30 * 24 * 60 * 60 * 1000)).getTime();
+    static getRevenues = async (prefixBundleId, days) => {
+        const daysAgo = new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000)).getTime();
 
         const result = await Transaction.aggregate([
             {
                 $match: {
-                    bundle_id: {
-                        $regex: prefix_bundle_id
-                    }
+                    $or: [
+                        {
+                            bundle_id: { $regex: prefixBundleId }
+                        },
+                        {
+                            store_id: { $regex: prefixBundleId }
+                        }
+                    ]
                 }
             },
             {
@@ -120,7 +133,7 @@ class paymentService {
                                     cond: {
                                         $and: [
                                             { $ne: ['$$transaction.offerDiscountType', 'FREE_TRIAL'] },
-                                            { $gte: ['$$transaction.originalPurchaseDate', thirtyDaysAgo] }
+                                            { $gte: ['$$transaction.purchaseDate', daysAgo] }
                                         ]
                                     }
                                 }
@@ -157,11 +170,11 @@ class paymentService {
         };
     }
 
-    static getNewCustomers = async () => {
-        const thirtyDaysAgo = new Date(new Date().getTime() - (30 * 24 * 60 * 60 * 1000));
+    static getNewCustomers = async (days) => {
+        const daysAgo = new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000));
 
         const newCustomers = await Device.distinct('uuid', {
-            createdAt: { $gte: thirtyDaysAgo }
+            createdAt: { $gte: daysAgo }
         });
         const NoNewCustomers = newCustomers.length;
         return {
@@ -170,10 +183,10 @@ class paymentService {
         };
     }
 
-    static getActiveUsers = async () => {
-        const thirtyDaysAgo = new Date(new Date().getTime() - (30 * 24 * 60 * 60 * 1000));
+    static getActiveUsers = async (days) => {
+        const daysAgo = new Date(new Date().getTime() - (days * 24 * 60 * 60 * 1000));
         const activeUsers = await Presence.find({
-            last_active: { $gte: thirtyDaysAgo },
+            last_active: { $gte: daysAgo },
             status: true
         })
         const NoActiveUsers = activeUsers.length;
@@ -182,6 +195,71 @@ class paymentService {
             active_users_formatted: NoActiveUsers.toLocaleString('en-US')
         };
     }
+
+    static getRecentTransactions = async (page, pageSize) => {
+        let results = await Transaction.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { bundle_id: { $regex: 'com.lutech.ios.themepack' } },
+                        { store_id: { $regex: 'com.lutech.ios.themepack' } }
+                    ]
+                }
+            },
+            {
+                $unwind: "$transactions"
+            },
+            {
+                $project: {
+                    _id: 0,
+                    transactionId: "$transactions.transactionId",
+                    originalTransactionId: "$transactions.originalTransactionId",
+                    bundleId: "$transactions.bundleId",
+                    storefront: "$transactions.storefront",
+                    productId: "$transactions.productId",
+                    totalCost: {
+                        $round: [
+                            {
+                                $multiply: [
+                                    { $divide: ["$transactions.quantity", 1000] },
+                                    "$transactions.price"
+                                ]
+                            }, 2
+                        ]
+                    },
+                    purchaseDate: "$transactions.purchaseDate",
+                    expiresDate: "$transactions.expiresDate",
+                    type: "$transactions.type"
+                }
+            },
+            {
+                $sort: { purchaseDate: -1 }
+            },
+            {
+                $skip: pageSize * (page - 1)
+            },
+            {
+                $limit: pageSize
+            }
+        ]);
+
+        let nresults = results.map(result => {
+            let purchaseDate = formatDate(result.purchaseDate);
+            let expiresDate = formatDate(result.expiresDate);
+            return { ...result, purchaseDate, expiresDate }
+        });
+
+        return nresults;
+    }
 };
 
+
+const formatDate = datems => {
+    let date = new Date(datems);
+    const day = ("0" + date.getDate()).slice(-2);
+    const month = ("0" + (date.getMonth() + 1)).slice(-2);
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+}
 export default paymentService;
