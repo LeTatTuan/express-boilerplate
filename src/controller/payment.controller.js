@@ -1,4 +1,4 @@
-import { DAYS_AGO, NAME_OF_PROJECT } from "@/enum";
+import { DAYS_AGO, NAME_OF_PROJECT, PAGE, PAGE_SIZE } from "@/enum";
 import { SuccessResponse } from "@/response/success.response.js";
 import paymentService from "@/services/payment.service";
 
@@ -47,8 +47,8 @@ const paymentController = {
     },
 
     getRecentTransactions: async (req, res) => {
-        const page = +req.query?.page || 1;
-        const pageSize = +req.query?.pageSize || 10;
+        const page = +req.query?.page || PAGE;
+        const pageSize = +req.query?.pageSize || PAGE_SIZE;
         new SuccessResponse({
             message: 'Recent Transactions',
             metadata: await paymentService.getRecentTransactions(page, pageSize)

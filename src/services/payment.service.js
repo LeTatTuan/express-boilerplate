@@ -1,6 +1,7 @@
 import Device from "@/models/Device";
 import Presence from "@/models/Presence";
 import Transaction from "@/models/Transaction";
+import { formatDate } from "@/utils/function.js";
 
 
 class paymentService {
@@ -243,23 +244,30 @@ class paymentService {
             }
         ]);
 
-        let nresults = results.map(result => {
-            let purchaseDate = formatDate(result.purchaseDate);
-            let expiresDate = formatDate(result.expiresDate);
-            return { ...result, purchaseDate, expiresDate }
+        const totalResults = await Transaction.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { bundle_id: { $regex: 'com.lutech.ios.themepack' } },
+                        { store_id: { $regex: 'com.lutech.ios.themepack' } }
+                    ]
+                }
+            },
+            {
+                $unwind: "$transactions"
+            }]);
+
+        let data = results.map(result => {
+            let purchaseDate = formatDate(new Date(result.purchaseDate));
+            let expiresDate = formatDate(new Date(result.expiresDate));
+            let totalCostStr = `$${result.totalCost}`;
+            return { ...result, purchaseDate, expiresDate, totalCostStr };
         });
 
-        return nresults;
+        const totalPages = Math.ceil(totalResults.length / pageSize);
+
+        return { totalResults: totalResults.length, totalPages, page, pageSize, data };
     }
 };
 
-
-const formatDate = datems => {
-    let date = new Date(datems);
-    const day = ("0" + date.getDate()).slice(-2);
-    const month = ("0" + (date.getMonth() + 1)).slice(-2);
-    const year = date.getFullYear();
-
-    return `${day}-${month}-${year}`;
-}
 export default paymentService;

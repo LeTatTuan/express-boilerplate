@@ -10,8 +10,9 @@ const formatDate = (date, addTime = null) => {
     const year = date.getFullYear().toString().slice(-2); // Extract last two digits of year
     const hour = ("0" + date.getHours()).slice(-2); // Add leading zero if single digit
     const minute = ("0" + (date.getMinutes() + (addTime ? 1 : 0))).slice(-2); // Add leading zero if single digit. addTime: time for network delay
+    const second = ("0" + date.getSeconds()).slice(-2);
     // Concatenate components with desired format
-    return `${day}-${month}-${year}-${hour}-${minute}`;
+    return `${hour}:${minute}:${second} ${day}-${month}-${year}`;
 }
 const countConnect = () => mongoose.connections.length;
 module.exports = {
