@@ -22,7 +22,17 @@ class paymentService {
         },
       },
       {
+        $unwind: '$transactions',
+      },
+      {
+        $group: {
+          _id: null,
+          transactions: { $push: '$transactions' },
+        },
+      },
+      {
         $project: {
+          _id: 0,
           transactions: {
             $filter: {
               input: '$transactions',
@@ -37,19 +47,8 @@ class paymentService {
           },
         },
       },
-      {
-        $addFields: {
-          transactionCount: { $size: '$transactions' },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalActiveTrials: { $sum: '$transactionCount' },
-        },
-      },
     ]);
-    const totalActiveTrials = result.length > 0 ? result[0].totalActiveTrials : 0;
+    const totalActiveTrials = result.length > 0 ? result[0].transactions.length : 0;
     return {
       active_trials: totalActiveTrials,
       active_trials_formatted: totalActiveTrials.toLocaleString('en-US'),
@@ -72,7 +71,17 @@ class paymentService {
         },
       },
       {
+        $unwind: '$transactions',
+      },
+      {
+        $group: {
+          _id: null,
+          transactions: { $push: '$transactions' },
+        },
+      },
+      {
         $project: {
+          _id: 0,
           transactions: {
             $filter: {
               input: '$transactions',
@@ -87,20 +96,9 @@ class paymentService {
           },
         },
       },
-      {
-        $addFields: {
-          transactionCount: { $size: '$transactions' },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalActiveSubs: { $sum: '$transactionCount' },
-        },
-      },
     ]);
 
-    const totalActiveSubs = result.length > 0 ? result[0].totalActiveSubs : 0;
+    const totalActiveSubs = result.length > 0 ? result[0].transactions.length : 0;
     return {
       active_subs: totalActiveSubs,
       active_subs_formatted: totalActiveSubs.toLocaleString('en-US'),
@@ -110,57 +108,57 @@ class paymentService {
   static getRevenues = async (prefixBundleId, days) => {
     const daysAgo = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000).getTime();
 
-    const result = await Transaction.aggregate([
+    let results = await Transaction.aggregate([
       {
         $match: {
-          $or: [
-            {
-              bundle_id: { $regex: prefixBundleId },
-            },
-            {
-              store_id: { $regex: prefixBundleId },
-            },
-          ],
+          $or: [{ bundle_id: { $regex: prefixBundleId } }, { store_id: { $regex: prefixBundleId } }],
+        },
+      },
+      {
+        $unwind: '$transactions',
+      },
+      {
+        $match: {
+          'transactions.purchaseDate': { $gte: daysAgo },
+          'transactions.offerDiscountType': { $ne: 'FREE_TRIAL' },
         },
       },
       {
         $project: {
-          transactionsTotal: {
-            $map: {
-              input: {
-                $filter: {
-                  input: '$transactions',
-                  as: 'transaction',
-                  cond: {
-                    $and: [
-                      { $ne: ['$$transaction.offerDiscountType', 'FREE_TRIAL'] },
-                      { $gte: ['$$transaction.purchaseDate', daysAgo] },
-                    ],
-                  },
-                },
-              },
-              as: 'transaction',
-              in: {
-                $multiply: [{ $divide: ['$$transaction.price', 1000] }, '$$transaction.quantity'],
-              },
-            },
+          _id: 0,
+          transactionId: '$transactions.transactionId',
+          originalTransactionId: '$transactions.originalTransactionId',
+          webOrderLineItemId: '$transactions.webOrderLineItemId',
+          bundleId: '$transactions.bundleId',
+          storefront: '$transactions.storefront',
+          productId: '$transactions.productId',
+          totalCost: {
+            $multiply: [{ $divide: ['$transactions.price', 1000] }, '$transactions.quantity'],
           },
+          subscriptionGroupIdentifier: '$transactions.subscriptionGroupIdentifier',
+          purchaseDate: '$transactions.purchaseDate',
+          originalPurchaseDate: '$transactions.originalPurchaseDate',
+          expiresDate: '$transactions.expiresDate',
+          quantity: '$transactions.quantity',
+          type: '$transactions.type',
+          currency: '$transactions.currency',
+          price: { $divide: ['$transactions.price', 1000] },
+          offerType: '$transactions.offerType',
+          offerDiscountType: '$transactions.offerDiscountType',
         },
       },
       {
-        $addFields: {
-          totalRevenue: { $sum: '$transactionsTotal' },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: '$totalRevenue' },
+        $sort: {
+          purchaseDate: -1,
         },
       },
     ]);
 
-    const totalRevenue = result.length > 0 ? result[0].totalRevenue : 0;
+    let totalRevenue = 0;
+    for (const result of results) {
+      let totalCostByRates = await rateService.currencyConvert(result.currency, result.totalCost);
+      totalRevenue += totalCostByRates;
+    }
     const formattedRevenue = totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     return {
       revenue: totalRevenue,
@@ -209,21 +207,21 @@ class paymentService {
           _id: 0,
           transactionId: '$transactions.transactionId',
           originalTransactionId: '$transactions.originalTransactionId',
+          webOrderLineItemId: '$transactions.webOrderLineItemId',
           bundleId: '$transactions.bundleId',
           storefront: '$transactions.storefront',
           productId: '$transactions.productId',
           totalCost: {
-            $round: [
-              {
-                $multiply: [{ $divide: ['$transactions.quantity', 1000] }, '$transactions.price'],
-              },
-              2,
-            ],
+            $multiply: [{ $divide: ['$transactions.price', 1000] }, '$transactions.quantity'],
           },
+          subscriptionGroupIdentifier: '$transactions.subscriptionGroupIdentifier',
           purchaseDate: '$transactions.purchaseDate',
+          originalPurchaseDate: '$transactions.originalPurchaseDate',
           expiresDate: '$transactions.expiresDate',
+          quantity: '$transactions.quantity',
           type: '$transactions.type',
           currency: '$transactions.currency',
+          price: { $divide: ['$transactions.price', 1000] },
           offerType: '$transactions.offerType',
           offerDiscountType: '$transactions.offerDiscountType',
         },
@@ -254,9 +252,10 @@ class paymentService {
       results.map(async (result) => {
         let purchaseDate = formatDate(new Date(result.purchaseDate));
         let expiresDate = result.expiresDate ? formatDate(new Date(result.expiresDate)) : 'Unlimited time';
+        let originalPurchaseDate = formatDate(new Date(result.originalPurchaseDate));
         let totalCost = await rateService.currencyConvert(result.currency, result.totalCost);
         let totalCostStr = `$${totalCost.toFixed(2)}`;
-        return { ...result, purchaseDate, expiresDate, totalCostStr };
+        return { ...result, purchaseDate, expiresDate, originalPurchaseDate, totalCostStr };
       }),
     );
 
