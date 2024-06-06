@@ -1,7 +1,6 @@
 import Device from '@/models/Device';
 import Presence from '@/models/Presence';
 import Transaction from '@/models/Transaction';
-import { formatDate } from '@/utils/function.js';
 import rateService from './rate.service';
 
 class paymentService {
@@ -169,9 +168,25 @@ class paymentService {
   static getNewCustomers = async (days) => {
     const daysAgo = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000);
 
-    const newCustomers = await Device.distinct('uuid', {
-      createdAt: { $gte: daysAgo },
-    });
+    const newCustomers = await Device.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: daysAgo },
+        },
+      },
+      {
+        $group: {
+          _id: '$uuid',
+          doc: { $first: '$$ROOT' },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: '$doc',
+        },
+      },
+    ]);
+
     const NoNewCustomers = newCustomers.length;
     return {
       new_customers: NoNewCustomers,
@@ -192,7 +207,7 @@ class paymentService {
     };
   };
 
-  static getRecentTransactions = async (page, pageSize, prefixBundleId) => {
+  static getRecentTransactions = async (prefixBundleId) => {
     let results = await Transaction.aggregate([
       {
         $match: {
@@ -229,12 +244,6 @@ class paymentService {
       {
         $sort: { purchaseDate: -1 },
       },
-      {
-        $skip: pageSize * (page - 1),
-      },
-      {
-        $limit: pageSize,
-      },
     ]);
 
     const totalResults = await Transaction.aggregate([
@@ -250,18 +259,12 @@ class paymentService {
 
     let data = await Promise.all(
       results.map(async (result) => {
-        let purchaseDate = formatDate(new Date(result.purchaseDate));
-        let expiresDate = result.expiresDate ? formatDate(new Date(result.expiresDate)) : 'Unlimited time';
-        let originalPurchaseDate = formatDate(new Date(result.originalPurchaseDate));
         let totalCost = await rateService.currencyConvert(result.currency, result.totalCost);
-        let totalCostStr = `$${totalCost.toFixed(2)}`;
-        return { ...result, purchaseDate, expiresDate, originalPurchaseDate, totalCostStr };
+        return { ...result, totalCost };
       }),
     );
 
-    const totalPages = Math.ceil(totalResults.length / pageSize);
-
-    return { totalResults: totalResults.length, totalPages, page, pageSize, data };
+    return { totalResults: totalResults.length, data };
   };
 }
 

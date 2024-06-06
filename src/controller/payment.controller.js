@@ -47,12 +47,10 @@ class paymentController {
   };
 
   static getRecentTransactions = async (req, res) => {
-    const page = +req.query?.page || PAGE;
-    const pageSize = +req.query?.pageSize || PAGE_SIZE;
     const prefixBundleId = req.query?.prefixBundleId || NAME_OF_PROJECT;
     new SuccessResponse({
       message: 'Recent Transactions',
-      metadata: await paymentService.getRecentTransactions(page, pageSize, prefixBundleId),
+      metadata: await paymentService.getRecentTransactions(prefixBundleId),
     }).send(res);
   };
 }
