@@ -48,9 +48,10 @@ class paymentController {
 
   static getRecentTransactions = async (req, res) => {
     const prefixBundleId = req.query?.prefixBundleId || NAME_OF_PROJECT;
+    const days = req.query?.days || DAYS_AGO;
     new SuccessResponse({
       message: 'Recent Transactions',
-      metadata: await paymentService.getRecentTransactions(prefixBundleId),
+      metadata: await paymentService.getRecentTransactions(prefixBundleId, days),
     }).send(res);
   };
 }

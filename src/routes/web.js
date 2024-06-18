@@ -7,6 +7,7 @@ import productController from '@/controller/product.controller';
 import userController from '@/controller/user.controller';
 import paymentController from '@/controller/payment.controller';
 import rateController from '@/controller/rate.controller';
+import projectController from '@/controller/project.controller';
 
 const router = express.Router();
 
@@ -49,4 +50,7 @@ router.get('/transactions', asyncHandler(paymentController.getRecentTransactions
 
 // rates route
 router.get('/rates/fetch', asyncHandler(rateController.fetchRates));
+
+//projects route
+router.get('/projects', asyncHandler(projectController.getProjects));
 export default router;

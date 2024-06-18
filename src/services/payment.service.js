@@ -207,7 +207,8 @@ class paymentService {
     };
   };
 
-  static getRecentTransactions = async (prefixBundleId) => {
+  static getRecentTransactions = async (prefixBundleId, days) => {
+    const daysAgo = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000).getTime();
     let results = await Transaction.aggregate([
       {
         $match: {
@@ -216,6 +217,11 @@ class paymentService {
       },
       {
         $unwind: '$transactions',
+      },
+      {
+        $match: {
+          'transactions.purchaseDate': { $gte: daysAgo },
+        },
       },
       {
         $project: {
@@ -254,6 +260,11 @@ class paymentService {
       },
       {
         $unwind: '$transactions',
+      },
+      {
+        $match: {
+          'transactions.purchaseDate': { $gte: daysAgo },
+        },
       },
     ]);
 

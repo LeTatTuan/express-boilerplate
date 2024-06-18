@@ -16,7 +16,7 @@ const getMongodbUri = () => {
   return `mongodb://${host}:${port}/${database}${!!options ? options : ''}`;
 };
 
-class Database {
+export class Database {
   constructor() {
     this.connect();
   }
@@ -38,6 +38,3 @@ class Database {
     return Database.instance;
   }
 }
-
-const instanceMongodb = Database.getInstance();
-export default instanceMongodb;
