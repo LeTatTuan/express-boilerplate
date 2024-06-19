@@ -1,8 +1,11 @@
 import mongoose from 'mongoose';
 
+const DOCUMENT_NAME = 'Token';
+const COLLECTION_NAME = 'Tokens';
+
 const tokenSchema = new mongoose.Schema(
   {
-    accessTokens: [{ type: Object }],
+    accessTokens: [{ type: String }],
     refreshToken: { type: String },
     ip: { type: String, default: '::1' },
     userAgent: {
@@ -18,8 +21,9 @@ const tokenSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: COLLECTION_NAME,
     versionKey: false,
   },
 );
 
-export default mongoose.model('Token', tokenSchema);
+export default mongoose.model(DOCUMENT_NAME, tokenSchema);

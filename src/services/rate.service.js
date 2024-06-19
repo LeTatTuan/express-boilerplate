@@ -30,4 +30,4 @@ export default class rateService {
     const rate = await Rate.findOne({ currency_code });
     return amount / rate.amount;
   };
-}
+};

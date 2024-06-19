@@ -1,6 +1,6 @@
 'use strict';
 import express from 'express';
-import { web } from '@/routes';
+import routes from '@/routes';
 import appConfig from '@/config/app.config';
 
 const {
@@ -8,7 +8,7 @@ const {
 } = appConfig;
 const router = express.Router();
 
-router.use(prefix, web);
+router.use(prefix, routes);
 
 // handler error
 router.use((req, res, next) => {

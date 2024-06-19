@@ -1,12 +1,14 @@
 import User from '@/models/User.js';
 import Role from '@/models/Role.js';
+import config from '@/config/app.config';
 import { BadRequestError } from '@/response/error.response.js';
 import { ROLES } from '@/enum/role.enum.js';
 import Token from '@/models/Token.js';
-import jwtService from './jwt.service.js';
+import JwtService from './jwt.service.js';
+import { pick } from '@/utils/function.js'
 
 // Role.insertMany([{ name: 'user' }, { name: 'admin' }, { name: 'moderator' }]);
-class authService {
+class AuthService {
   static checkExistingUser = async (username, email) => {
     const usernameAlreadyExists = await User.findOne({ username });
     if (usernameAlreadyExists) throw new BadRequestError('Username is already!');
@@ -22,9 +24,9 @@ class authService {
       }
     }
   };
+
   static register = async (userDto) => {
     const { username, email, password, roles, userAgent, ip } = userDto;
-    if (!username || !email || !password || !roles) throw new BadRequestError('Invalid information to register!');
     await this.checkExistingUser(username, email);
     this.checkExistingRole(roles);
 
@@ -44,37 +46,32 @@ class authService {
       roles: userRoles,
     });
 
-    const accessToken = jwtService.createToken(userCreated);
+    const accessToken = JwtService.generateToken(pick(userCreated, ['_id', 'roles']));
 
-    const refreshToken = jwtService.createToken(userCreated, false);
+    const refreshToken = JwtService.generateToken(pick(userCreated, ['_id']), false);
 
     const userToken = {
-      accessTokens: [{ accessToken, signedAt: Date.now().toString() }],
+      accessTokens: [accessToken],
       refreshToken,
       ip,
       userAgent,
       user: userCreated._id,
     };
-    userCreated.password = null;
 
     await Token.create(userToken);
-    return { user: userCreated, accessToken, refreshToken };
+    return { access_token: accessToken, refresh_token: refreshToken };
   };
 
   static login = async (userDto) => {
     const { email, password, userAgent, ip } = userDto;
-    if (!email || !password) throw new BadRequestError('Please provide email/username amd password!');
 
-    let user = await User.findOne({ $or: [{ email: email }, { username: email }] }).populate('roles');
-
+    let user = await User.findOne({ $or: [{ email: email }] }).populate('roles');
     if (!user) throw new BadRequestError('Invalid Credentials');
 
     const isMatchPassword = await user.comparePassword(password);
-
     if (!isMatchPassword) throw new BadRequestError('Invalid Credentials');
-    user.password = null;
 
-    const accessToken = jwtService.createToken(user);
+    const accessToken = JwtService.generateToken(pick(userCreated, ['_id', 'roles']));
 
     const userToken = await Token.findOne({ user: user._id });
     let refreshToken = '';
@@ -90,15 +87,15 @@ class authService {
       }
 
       await Token.findByIdAndUpdate(userToken._id, {
-        accessTokens: [...oldTokens, { accessToken, signedAt: Date.now().toString() }],
+        accessTokens: [...oldTokens, accessToken],
       });
       refreshToken = userToken.refreshToken;
       return { user, accessToken, refreshToken };
     } else {
-      refreshToken = jwtService.createToken(user, false);
+      refreshToken = JwtService.generateToken(pick(userCreated, ['_id']));
 
       const userTokenNew = {
-        accessTokens: [{ accessToken, signedAt: Date.now().toString() }],
+        accessTokens: [accessToken],
         refreshToken,
         userAgent,
         ip,
@@ -107,12 +104,12 @@ class authService {
 
       await Token.create(userTokenNew);
     }
-    return { user, accessToken, refreshToken };
+    return { access_token: accessToken, refresh_token: refreshToken };
   };
 
   static logout = async (req, res) => {
-    await Token.findOneAndDelete({ user: req.user.userId });
+    await Token.findOneAndDelete({ user: req.user._id });
   };
 }
 
-export default authService;
+export default AuthService;

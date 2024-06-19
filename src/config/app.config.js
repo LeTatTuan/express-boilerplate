@@ -5,8 +5,11 @@ const dev = {
   app: {
     port: env('DEV_APP_PORT', 5789),
     prefix: env('DEV_ROUTER_PREFIX', '/api/v1'),
-    secret_access: env('ACCESS_TOKEN_SECRET', 'secret_access'),
-    secret_refresh: env('REFRESH_TOKEN_SECRET', 'secret_refresh'),
+  },
+  jwt: {
+    secret: env('JWT_SECRET', 'lutech-ltd'),
+    accessExpiration: env('JWT_ACCESS_EXPIRATION', '1d'),
+    refreshExpiration: env('JWT_REFRESH_EXPIRATION', '30d'),
   },
   db: {
     port: env('PORT', 27017),
@@ -18,8 +21,11 @@ const pro = {
   app: {
     port: env('PRO_APP_PORT', 5789),
     prefix: env('PRO_ROUTER_PREFIX', '/api/v1'),
-    secret_access: env('ACCESS_TOKEN_SECRET', 'secret_access'),
-    secret_refresh: env('REFRESH_TOKEN_SECRET', 'secret_refresh'),
+  },
+  jwt: {
+    secret: env('JWT_SECRET', 'lutech-ltd'),
+    accessExpiration: env('JWT_ACCESS_EXPIRATION', '1d'),
+    refreshExpiration: env('JWT_REFRESH_EXPIRATION', '30d'),
   },
   db: {
     port: env('PORT', 27017),

@@ -3,7 +3,7 @@ import Token from '@/models/Token';
 import { Unauthorized } from '@/response/error.response';
 import { ROLES } from '@/enum';
 
-const authenticateUser = async (req, res, next) => {
+export const authenticateUser = async (req, res, next) => {
   let accessToken, refreshToken;
   const authHeader = req.headers.authorization;
 
@@ -37,17 +37,10 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-const authorizePermissions = (req, res, next) => {
+export const authorizePermissions = (req, res, next) => {
   const roles = req.user.roles;
   roles.some((role) => {
     if (!ROLES.includes(role.name)) throw new Unauthorized('Unauthorized to access this route');
   });
   next();
 };
-
-const authMiddleware = {
-  authenticateUser,
-  authorizePermissions,
-};
-
-export default authMiddleware;

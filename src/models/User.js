@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import validator from 'validator';
 import Token from './Token';
 
+const DOCUMENT_NAME = 'User';
+const COLLECTION_NAME = 'Users';
+
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -35,6 +38,7 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: COLLECTION_NAME,
     versionKey: false,
   },
 );
@@ -76,4 +80,4 @@ userSchema.pre('remove', async function (next) {
   }
 });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model(DOCUMENT_NAME, userSchema);

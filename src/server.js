@@ -19,6 +19,7 @@ configCors(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+//connect database
 Database.getInstance();
 
 app.use(router);
